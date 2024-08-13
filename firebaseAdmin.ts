@@ -1,8 +1,7 @@
-import { initializeApp } from "firebase-admin"
-import { App, cert, getApp } from "firebase-admin/app"
+import { App, getApp } from "firebase-admin/app"
 import { getFirestore } from "firebase-admin/firestore"
-import { getApps } from "firebase/app"
-
+import { initializeApp, getApps } from 'firebase-admin/app';
+import { cert } from 'firebase-admin/app';
 
 
 const serviceKey = require('@/service_key.json')
