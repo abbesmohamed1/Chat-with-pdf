@@ -17,7 +17,7 @@ import { AIMessage, HumanMessage } from "@langchain/core/messages";
 
 const model = new ChatOpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-  modelName: "gpt-3.5-turbo",
+  modelName: "gpt-4o",
 });
 
 export const indexName = "pinconeindex";
