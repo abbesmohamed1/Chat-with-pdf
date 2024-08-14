@@ -5,8 +5,10 @@ import { FormEvent, useEffect, useState, useTransition } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Loader2Icon } from "lucide-react";
-// import { useCollection } from "react-firebase-hooks"
-
+import { useCollection } from "react-firebase-hooks/firestore";
+import { collection, orderBy, query } from "firebase/firestore";
+import { db } from "@/firebase";
+import { askQuestion } from "@/actions/askQuestion";
 
 export type Message = {
   id?: string;
@@ -23,32 +25,53 @@ function Chat({ id }: { id: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
 
   const [snapshot, loading, error] = useCollection(
-    user && query(collection(db, "users", user?.id, "files", id, "chat"),
-  orderBy("createdAt", "asc"))
-  )
-  
+    user &&
+      query(
+        collection(db, "users", user?.id, "files", id, "chat"),
+        orderBy("createdAt", "asc")
+      )
+  );
 
   useEffect(() => {
-    if(!snapshot) return;
-    console.log("updated snapshot", snapshot.docs)
+    if (!snapshot) return;
+    console.log("updated snapshot", snapshot.docs);
 
     // get second last message to check if the AI is thinking
     // const lastMessage = messages.pop()
+    const lastMessage = messages.pop()
 
-  }, [snapshot])
+    if(lastMessage?.role === "ai" && lastMessage.message === "Thinking..."){
+      // return as this is a dummy placeholder message
+      return
+    }
 
+    const newMessages = snapshot.docs.map(doc => {
+      const {role, message, createdAt} = doc.data()
+
+      return{
+        id: doc.id,
+        role,
+        message, 
+        createdAt: createdAt.toDate(),
+      }
+
+    })
+    setMessages(newMessages)
+
+    // Ignore messages dependency warning here... we dont want an infinite loop
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snapshot]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-
-    const q = input
-    setInput('');
-
+    const q = input;
+    setInput("");
 
     // Optimistic UI Update
-    setMessages((prev)=>[
-      ...prev,{
+    setMessages((prev) => [
+      ...prev,
+      {
         role: "human",
         message: q,
         createdAt: new Date(),
@@ -56,28 +79,27 @@ function Chat({ id }: { id: string }) {
       {
         role: "ai",
         message: "Thinking...",
-        createdAt: new Date()
-      }
-    ])
+        createdAt: new Date(),
+      },
+    ]);
 
     startTransition(async () => {
-      const {success, message } = await askQuestion(id, q)
+      const { success, message } = await askQuestion(id, q);
 
-      if(!success){
+      if (!success) {
         // toast...
 
-        setMessages((prev) => 
-        prev.slice(0, prev.length - 1).concat([
-          {
-            role: "ai",
-            message: `Whoops... ${message}`,
-            createdAt: new Date()
-          }
-        ])
-        )
+        setMessages((prev) =>
+          prev.slice(0, prev.length - 1).concat([
+            {
+              role: "ai",
+              message: `Whoops... ${message}`,
+              createdAt: new Date(),
+            },
+          ])
+        );
       }
-    })
-
+    });
   };
 
   return (
@@ -85,9 +107,13 @@ function Chat({ id }: { id: string }) {
       {/* Chat Contents */}
 
       <div className="flex-1 w-full">{/* chat messages... */}
-
-
-
+      
+      {messages.map(message => (
+        <div key={message.id}>
+          <p>{message.message}</p>
+        </div>
+      ))}
+      
       </div>
 
       <form
@@ -100,7 +126,11 @@ function Chat({ id }: { id: string }) {
           onChange={(e) => setInput(e.target.value)}
         />
         <Button type="submit" disabled={!input || isPending}>
-          {isPending ? (<Loader2Icon className="animate-spin text-indigo-600" />) : ("Ask")}
+          {isPending ? (
+            <Loader2Icon className="animate-spin text-indigo-600" />
+          ) : (
+            "Ask"
+          )}
         </Button>
       </form>
     </div>

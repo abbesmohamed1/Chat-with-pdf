@@ -200,6 +200,33 @@ const generateLangchainCompletion = async (docId: string, question: string) => {
     ["user", "{input}"],
   ])
 
-  
+  // Create a chain to comibine the retrieved documents into a coherent response
+  console.log("--- Creating a document combining chain ---")
+  const historyAwareCombineDocsChain = await createStuffDocumentsChain({
+    llm: model,
+    prompt: historyAwareRetrievalPrompt,
+  })
+
+
+  // Create the main retrieval chain that combines the history-aware retriever and document combining chains
+  console.log("--- Creating the main retrieval chain... ---")
+  const conversationalRetrievalChain = await createRetrievalChain({
+    retriever: historyAwareRetrieverChain,
+    combineDocsChain: historyAwareCombineDocsChain,
+  })
+
+  console.log("--- Running the chain with a sample conversation... ---")
+  const reply = await conversationalRetrievalChain.invoke({
+    chat_history: chatHistory,
+    input: question,
+  })
+
+
+  // Print the result to the console
+  console.log(reply.answer)
+  return reply.answer
 
 };
+
+// Export the model and run the function
+export {model , generateLangchainCompletion}
